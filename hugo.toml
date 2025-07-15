@@ -1,0 +1,13 @@
+baseURL = 'https://example.com/'
+languageCode = 'en-us'
+title = "Kai's Blog"
+theme = 'hugo-book'
+
+
+[params]
+  BookTheme = 'auto'
+  BookToC = true
+  BookSection = 'docs'
+  BookRepo = 'https://github.com/kai1805/blog'
+  BookEditPath = 'edit/main/content'
+
