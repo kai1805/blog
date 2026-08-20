@@ -1,9 +1,5 @@
 ---
 title: Tools
-menu:
-  after:
-    name: Tools
-    weight: 10
 ---
 
 Small browser-based tools. Each one is a standalone app that stores its data

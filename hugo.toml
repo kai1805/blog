@@ -1,13 +1,71 @@
 baseURL = 'https://kai1805.github.io/blog/'
 languageCode = 'en-us'
 title = "Kai's Blog"
-theme = 'hugo-book'
+theme = 'hextra'
 
+enableGitInfo = true
+
+[markup]
+  [markup.highlight]
+    noClasses = false
+  [markup.goldmark.renderer]
+    unsafe = true
+
+[[menu.main]]
+  identifier = "engineering"
+  name = "Engineering"
+  pageRef = "/engineering"
+  weight = 1
+
+[[menu.main]]
+  identifier = "blog"
+  name = "Blog"
+  pageRef = "/blog"
+  weight = 2
+
+[[menu.main]]
+  identifier = "tools"
+  name = "Tools"
+  pageRef = "/tools"
+  weight = 3
+
+[[menu.main]]
+  name = "Search"
+  weight = 4
+  [menu.main.params]
+    type = "search"
+
+[[menu.main]]
+  name = "GitHub"
+  weight = 5
+  url = "https://github.com/kai1805/blog"
+  [menu.main.params]
+    icon = "github"
 
 [params]
-  BookTheme = 'auto'
-  BookToC = true
-  BookSection = 'engineering'
-  BookRepo = 'https://github.com/kai1805/blog'
-  BookEditPath = 'edit/main/content'
+  description = "Kai's software engineering knowledge and stories"
 
+  [params.navbar]
+    displayTitle = true
+    displayLogo = false
+
+  [params.theme]
+    default = "system"
+    displayToggle = true
+
+  [params.footer]
+    enable = true
+    displayCopyright = false
+    displayPoweredBy = true
+
+  [params.page]
+    # width options: full (100%), wide (90rem), normal (80rem)
+    width = "full"
+
+  [params.search]
+    enable = true
+    type = "flexsearch"
+
+  [params.editURL]
+    enable = true
+    base = "https://github.com/kai1805/blog/edit/main/content"
