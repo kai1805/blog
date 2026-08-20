@@ -12,6 +12,18 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build tool apps
+        run: |
+          npm install
+          npm run build:tools
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2

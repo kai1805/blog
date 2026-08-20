@@ -1,0 +1,11 @@
+3000words.pdf
+
+# Hugo
+public/
+resources/
+.hugo_build.lock
+
+# Node / tool apps
+node_modules/
+static/tools/*
+!static/tools/.gitkeep
