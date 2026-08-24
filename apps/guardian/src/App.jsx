@@ -27,9 +27,9 @@ export default function App() {
   const doneCount = Object.values(done).filter(Boolean).length;
 
   return (
-    <main style={{ maxWidth: 720, margin: "2rem auto", fontFamily: "sans-serif", padding: "0 1rem" }}>
+    <main className="container" style={{ maxWidth: 720 }}>
       <h1>LeetCode Guardian Tracker</h1>
-      <p>
+      <p className="muted">
         Guardian is a contest-rating badge (top ~5%, roughly 2200+ rating), not a solve-count badge -
         but these Hard problems cover the patterns that show up most often as contest Q3/Q4. Progress
         is stored only in this browser (localStorage).
@@ -39,10 +39,17 @@ export default function App() {
 
       {CATEGORIES.map((cat) => {
         const catDone = cat.problems.filter((p) => done[p.slug]).length;
+        const complete = catDone === cat.problems.length;
         return (
-          <section key={cat.name} style={{ marginTop: "1.5rem" }}>
-            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.25rem" }}>{cat.name}</h2>
-            <ProgressBar done={catDone} total={cat.problems.length} />
+          <details key={cat.name} className="card" open={!complete} style={{ marginTop: "1rem" }}>
+            <summary style={{ cursor: "pointer" }}>
+              <span style={{ fontSize: "1.1rem", fontWeight: 600 }}>
+                {cat.name} {complete && "✅"}
+              </span>
+            </summary>
+            <div style={{ marginTop: "0.5rem" }}>
+              <ProgressBar done={catDone} total={cat.problems.length} label={`${catDone} / ${cat.problems.length}`} />
+            </div>
             <ul style={{ listStyle: "none", padding: 0, marginTop: "0.5rem" }}>
               {cat.problems.map((p) => (
                 <li
@@ -63,7 +70,6 @@ export default function App() {
                       href={`https://leetcode.com/problems/${p.slug}/`}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: "inherit" }}
                     >
                       {p.id}. {p.title}
                     </a>
@@ -71,7 +77,7 @@ export default function App() {
                 </li>
               ))}
             </ul>
-          </section>
+          </details>
         );
       })}
     </main>
@@ -82,10 +88,10 @@ function ProgressBar({ done, total, label }) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   return (
     <div>
-      <div style={{ background: "#e5e5e5", borderRadius: 4, height: 8, overflow: "hidden" }}>
-        <div style={{ background: "#2b6cb0", width: `${pct}%`, height: "100%" }} />
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
-      <small>{label ?? `${done} / ${total}`}</small>
+      <small className="muted">{label ?? `${done} / ${total}`}</small>
     </div>
   );
 }

@@ -32,21 +32,21 @@ export default function App() {
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: "2rem auto", fontFamily: "sans-serif" }}>
+    <main className="container">
       <h1>Vocabulary Trainer</h1>
-      <p>Words are stored only in this browser (localStorage).</p>
+      <p className="muted">Words are stored only in this browser (localStorage).</p>
 
-      <form onSubmit={addWord} style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <input placeholder="word" value={term} onChange={(e) => setTerm(e.target.value)} />
-        <input placeholder="meaning" value={meaning} onChange={(e) => setMeaning(e.target.value)} />
-        <button type="submit">Add</button>
+      <form onSubmit={addWord} style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}>
+        <input className="input" placeholder="word" value={term} onChange={(e) => setTerm(e.target.value)} />
+        <input className="input" placeholder="meaning" value={meaning} onChange={(e) => setMeaning(e.target.value)} />
+        <button className="btn" type="submit">Add</button>
       </form>
 
-      <ul style={{ listStyle: "none", padding: 0 }}>
+      <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {words.map((w, i) => (
-          <li key={i} style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0" }}>
+          <li key={i} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span><strong>{w.term}</strong> - {w.meaning}</span>
-            <button onClick={() => removeWord(i)}>Remove</button>
+            <button className="btn" onClick={() => removeWord(i)}>Remove</button>
           </li>
         ))}
       </ul>

@@ -1,0 +1,112 @@
+/*
+ * Shared design tokens for tool apps (apps/*), matched to the Hextra Hugo
+ * theme's palette (themes/hextra/assets/css/styles.css) so tool pages don't
+ * look visually disconnected from the rest of the site.
+ *
+ * Dark mode is driven by the same "dark" class on <html> and the same
+ * "color-theme" localStorage key that Hextra's theme toggle uses, so a
+ * tool page opened after switching theme on the main site matches.
+ */
+
+:root {
+  --primary: hsl(212 100% 50%);
+  --bg: #fff;
+  --text: #171717;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card-hover-bg: #f8fafc;
+  --card-hover-border: #d1d5db;
+}
+
+html.dark {
+  color-scheme: dark;
+  --primary: hsl(204 100% 50%);
+  --bg: #111;
+  --text: #f5f5f5;
+  --muted: #a3a3a3;
+  --border: #262626;
+  --card-hover-bg: #171717;
+  --card-hover-border: #404040;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: var(--primary);
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.card:hover {
+  background: var(--card-hover-bg);
+  border-color: var(--card-hover-border);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.progress-track {
+  background: var(--border);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: var(--primary);
+  height: 100%;
+}
