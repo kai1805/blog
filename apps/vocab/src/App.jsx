@@ -63,7 +63,7 @@ function buildQuestion(excludeWord) {
   const word = randomWord(excludeWord);
   const [meaning, ...altMeanings] = DEFINITIONS[word.toLowerCase()].meanings;
   const options = shuffle([word, ...pickDistractors(word, 3)]);
-  return { word, definition: formatMeaning(meaning), example: meaning.example, altMeanings, options };
+  return { word, definition: formatMeaning(meaning), examples: meaning.examples ?? [], altMeanings, options };
 }
 
 export default function App() {
@@ -257,10 +257,14 @@ function QuestionCard({ question, status, selected, choose, optionStyle, showDet
 
         {showDetails && status !== "ready" && (
           <>
-            {question.example && (
-              <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0, fontStyle: "italic" }}>
-                "{question.example}"
-              </p>
+            {question.examples.length > 0 && (
+              <div className="muted" style={{ marginTop: "0.75rem", fontStyle: "italic" }}>
+                {question.examples.map((example, i) => (
+                  <p key={i} style={{ margin: i === 0 ? 0 : "0.25rem 0 0" }}>
+                    "{example}"
+                  </p>
+                ))}
+              </div>
             )}
             {question.altMeanings.length > 0 && (
               <p className="muted" style={{ marginTop: "0.5rem", marginBottom: 0, fontSize: "0.9em" }}>

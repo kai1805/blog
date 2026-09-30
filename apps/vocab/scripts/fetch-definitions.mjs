@@ -1,15 +1,15 @@
-// One-time/offline build step: gets definitions (with example sentences,
-// and up to 2 alternate meanings by part of speech) for every word in
-// ../src/words.js and writes the results to ../src/definitions.json, which
-// the app bundles and reads at runtime instead of calling any API live.
+// Bootstrap/fallback source for ../src/definitions.json. The bundled
+// definitions are primarily hand-authored (by Claude) for learner-friendly
+// quality - this script is only meant to give a rough first-draft entry for
+// NEW words added to words.js later (it resumes and only fills in words
+// missing from definitions.json, so it won't touch existing curated
+// entries). Review anything it adds; its picks are decent but not
+// learner-tuned the way the hand-authored entries are.
 //
 // Each word tries the Free Dictionary API first (nicer, learner-friendly
 // prose) and falls back to the local WordNet database (offline, always
 // available) if the API fails, times out, or doesn't have the word. This
 // means a run always completes even if the API is down.
-//
-// Re-run this script whenever words.js changes or to refresh/backfill
-// definitions - it resumes from whatever's already in definitions.json.
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -35,7 +35,7 @@ function extractMeanings(data) {
     const pos = meaning.partOfSpeech;
     for (const d of meaning.definitions ?? []) {
       if (!d.definition) continue;
-      const candidate = { partOfSpeech: pos, definition: d.definition, example: d.example || undefined };
+      const candidate = { partOfSpeech: pos, definition: d.definition, examples: d.example ? [d.example] : [] };
       const existing = byPos.get(pos);
       if (!existing || (isWeak(existing.definition) && d.definition.length > existing.definition.length)) {
         byPos.set(pos, candidate);
@@ -92,10 +92,11 @@ async function fetchWordnetMeanings(word) {
   for (const entry of entries) {
     const pos = WORDNET_POS[entry.pos];
     if (!pos || !entry.def) continue;
+    const example = extractExample(entry.gloss);
     const candidate = {
       partOfSpeech: pos,
       definition: entry.def.trim(),
-      example: extractExample(entry.gloss),
+      examples: example ? [example] : [],
       boring: BORING_LEXNAMES.has(entry.lexName),
     };
     const existing = byPos.get(pos);
@@ -123,7 +124,7 @@ async function fetchWordnetMeanings(word) {
   if (!best) return [];
 
   const alternates = all.filter((m) => m !== best).slice(0, MAX_ALT_MEANINGS);
-  return [best, ...alternates].map(({ partOfSpeech, definition, example }) => ({ partOfSpeech, definition, example }));
+  return [best, ...alternates].map(({ partOfSpeech, definition, examples }) => ({ partOfSpeech, definition, examples }));
 }
 
 async function fetchMeanings(word) {
