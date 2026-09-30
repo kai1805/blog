@@ -1,62 +1,138 @@
-// One-time/offline build step: fetches a definition for every word in
-// ../src/words.js from the Free Dictionary API and writes the results to
-// ../src/definitions.json, which the app bundles and reads at runtime
-// instead of calling the API live. Re-run this script whenever words.js
-// changes or to refresh stale definitions.
+// One-time/offline build step: gets definitions (with example sentences,
+// and up to 2 alternate meanings by part of speech) for every word in
+// ../src/words.js and writes the results to ../src/definitions.json, which
+// the app bundles and reads at runtime instead of calling any API live.
+//
+// Each word tries the Free Dictionary API first (nicer, learner-friendly
+// prose) and falls back to the local WordNet database (offline, always
+// available) if the API fails, times out, or doesn't have the word. This
+// means a run always completes even if the API is down.
+//
+// Re-run this script whenever words.js changes or to refresh/backfill
+// definitions - it resumes from whatever's already in definitions.json.
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import WordPOS from "wordpos";
 import { WORDS } from "../src/words.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, "../src/definitions.json");
-const CONCURRENCY = 8;
-const MAX_RETRIES = 5;
+const CONCURRENCY = 16;
+const REQUEST_TIMEOUT_MS = 4000;
+const MAX_ALT_MEANINGS = 2;
+
+const wordpos = new WordPOS();
 
 const isWeak = (text) => text.length < 25 || /^[A-Z][a-z]+ uses\.?$/.test(text.trim());
 
-function pickBest(data) {
-  let best = null;
+// One meaning per distinct part of speech (the API can list several senses
+// per part of speech; keep the most descriptive one), ordered with the best
+// overall meaning first so the app can quiz on meanings[0].
+function extractMeanings(data) {
+  const byPos = new Map();
   for (const meaning of data?.[0]?.meanings ?? []) {
+    const pos = meaning.partOfSpeech;
     for (const d of meaning.definitions ?? []) {
       if (!d.definition) continue;
-      if (!best || (isWeak(best.definition) && d.definition.length > best.definition.length)) {
-        best = { definition: d.definition, partOfSpeech: meaning.partOfSpeech };
+      const candidate = { partOfSpeech: pos, definition: d.definition, example: d.example || undefined };
+      const existing = byPos.get(pos);
+      if (!existing || (isWeak(existing.definition) && d.definition.length > existing.definition.length)) {
+        byPos.set(pos, candidate);
       }
       if (!isWeak(d.definition)) break;
     }
-    if (best && !isWeak(best.definition)) break;
   }
-  return best;
+
+  const all = [...byPos.values()];
+  const best = all.find((m) => !isWeak(m.definition)) ?? all[0];
+  if (!best) return [];
+
+  const alternates = all.filter((m) => m !== best).slice(0, MAX_ALT_MEANINGS);
+  return [best, ...alternates];
 }
 
-async function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// Single attempt, short timeout, no retries - if the live API is slow or
+// down we want to fall back to WordNet quickly rather than stall the run.
+async function fetchLiveMeanings(word) {
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meanings = extractMeanings(data);
+    return meanings.length > 0 ? meanings : null;
+  } catch {
+    return null;
+  }
 }
 
-async function fetchDefinition(word) {
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+const WORDNET_POS = { n: "noun", v: "verb", a: "adjective", s: "adjective", r: "adverb" };
+const POS_PRIORITY = { noun: 0, verb: 1, adjective: 2, adverb: 3 };
+// Technical/scientific senses (chemical elements, SI units, etc.) that WordNet
+// often lists before the everyday sense of a word (e.g. "CD" -> cadmium).
+const BORING_LEXNAMES = new Set(["noun.quantity", "noun.substance"]);
 
-      if (res.status === 404) return null;
-      if (res.status === 429) {
-        await sleep(2000 * (attempt + 1));
-        continue;
-      }
-      if (!res.ok) {
-        await sleep(1000 * (attempt + 1));
-        continue;
-      }
+function extractExample(gloss) {
+  const match = /"([^"]+)"/.exec(gloss || "");
+  return match ? match[1].trim() : undefined;
+}
 
-      const data = await res.json();
-      const best = pickBest(data);
-      if (!best) return null;
-      return best.partOfSpeech ? `(${best.partOfSpeech}) ${best.definition}` : best.definition;
-    } catch {
-      await sleep(1000 * (attempt + 1));
+async function fetchWordnetMeanings(word) {
+  let entries;
+  try {
+    entries = await wordpos.lookup(word);
+  } catch {
+    return [];
+  }
+  if (!entries || entries.length === 0) return [];
+
+  const byPos = new Map();
+  for (const entry of entries) {
+    const pos = WORDNET_POS[entry.pos];
+    if (!pos || !entry.def) continue;
+    const candidate = {
+      partOfSpeech: pos,
+      definition: entry.def.trim(),
+      example: extractExample(entry.gloss),
+      boring: BORING_LEXNAMES.has(entry.lexName),
+    };
+    const existing = byPos.get(pos);
+    if (
+      !existing ||
+      (existing.boring && !candidate.boring) ||
+      (existing.boring === candidate.boring &&
+        isWeak(existing.definition) &&
+        candidate.definition.length > existing.definition.length)
+    ) {
+      byPos.set(pos, candidate);
     }
   }
+
+  const all = [...byPos.values()];
+  const preferred = all.filter((m) => !m.boring);
+  // WordNet's own ordering across parts of speech isn't frequency-ranked, so
+  // without this a rarer adjective/adverb sense can edge out a more central
+  // noun/verb one (e.g. "CD" as the numeral 400 outranking "certificate of
+  // deposit"). This tiebreak just nudges toward the more central senses.
+  const pool = [...(preferred.length > 0 ? preferred : all)].sort(
+    (a, b) => POS_PRIORITY[a.partOfSpeech] - POS_PRIORITY[b.partOfSpeech]
+  );
+  const best = pool.find((m) => !isWeak(m.definition)) ?? pool[0];
+  if (!best) return [];
+
+  const alternates = all.filter((m) => m !== best).slice(0, MAX_ALT_MEANINGS);
+  return [best, ...alternates].map(({ partOfSpeech, definition, example }) => ({ partOfSpeech, definition, example }));
+}
+
+async function fetchMeanings(word) {
+  const live = await fetchLiveMeanings(word);
+  if (live) return { meanings: live, source: "live" };
+
+  const wordnet = await fetchWordnetMeanings(word);
+  if (wordnet.length > 0) return { meanings: wordnet, source: "wordnet" };
+
   return null;
 }
 
@@ -66,9 +142,16 @@ async function writeResults(results) {
   return Object.keys(sorted).length;
 }
 
+// Only a { meanings: [...] } entry counts as done; older plain-string
+// entries (pre-example/alt-meaning format) get refetched.
+function isUpToDate(entry) {
+  return entry && Array.isArray(entry.meanings) && entry.meanings.length > 0;
+}
+
 async function loadExisting() {
   try {
-    return JSON.parse(await readFile(OUT_PATH, "utf8"));
+    const parsed = JSON.parse(await readFile(OUT_PATH, "utf8"));
+    return Object.fromEntries(Object.entries(parsed).filter(([, v]) => isUpToDate(v)));
   } catch {
     return {};
   }
@@ -79,6 +162,8 @@ async function main() {
   const results = await loadExisting();
   let done = 0;
   let failed = 0;
+  let fromLive = 0;
+  let fromWordnet = 0;
   const queue = WORDS.filter((w) => !(w.toLowerCase() in results));
   const toFetch = queue.length;
   process.stderr.write(`${Object.keys(results).length} already cached, fetching ${toFetch} more\n`);
@@ -87,15 +172,17 @@ async function main() {
     while (queue.length > 0) {
       const word = queue.shift();
       const key = word.toLowerCase();
-      const def = await fetchDefinition(word);
-      if (def) {
-        results[key] = def;
+      const result = await fetchMeanings(word);
+      if (result) {
+        results[key] = { meanings: result.meanings };
+        if (result.source === "live") fromLive++;
+        else fromWordnet++;
       } else {
         failed++;
       }
       done++;
       if (done % 20 === 0 || done === toFetch) {
-        process.stderr.write(`${done}/${toFetch} (${failed} without a definition)\n`);
+        process.stderr.write(`${done}/${toFetch} (live: ${fromLive}, wordnet: ${fromWordnet}, failed: ${failed})\n`);
         await writeResults(results); // checkpoint, so a crash doesn't lose progress
       }
     }
@@ -104,7 +191,7 @@ async function main() {
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
   const count = await writeResults(results);
-  process.stderr.write(`Wrote ${count} definitions to ${OUT_PATH}\n`);
+  process.stderr.write(`Wrote ${count} definitions to ${OUT_PATH} (live: ${fromLive}, wordnet: ${fromWordnet}, failed: ${failed})\n`);
 }
 
 main();
