@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { WORDS } from "./words.js";
 import DEFINITIONS from "./definitions.json";
+import ScanImage from "./ScanImage.jsx";
 
 const SCORE_KEY = "vocab-trainer:score";
 const BEST_COMPETITION_KEY = "vocab-trainer:competition-best";
@@ -67,7 +68,7 @@ function buildQuestion(excludeWord) {
 }
 
 export default function App() {
-  const [mode, setMode] = useState("practice"); // practice | competition
+  const [mode, setMode] = useState("practice"); // practice | competition | scan
   const [score, setScore] = useState(loadScore);
   const [question, setQuestion] = useState(() => buildQuestion(null));
   const [selected, setSelected] = useState(null);
@@ -182,7 +183,16 @@ export default function App() {
         >
           60s Challenge
         </button>
+        <button
+          className="btn"
+          style={{ opacity: mode === "scan" ? 1 : 0.5 }}
+          onClick={() => switchMode("scan")}
+        >
+          Scan Image
+        </button>
       </div>
+
+      {mode === "scan" && <ScanImage />}
 
       {mode === "practice" && (
         <>
