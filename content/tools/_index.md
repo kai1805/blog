@@ -8,3 +8,4 @@ devices.
 
 - [Vocabulary Trainer](vocab/) - practice English vocabulary.
 - [LeetCode Guardian Tracker](guardian/) - checklist of Hard problems by pattern for Guardian badge prep.
+- [CFA Level II Notes](cfa-level2/) - Vietnamese summary notes for CFA Level II.

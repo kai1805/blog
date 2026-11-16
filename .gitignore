@@ -9,3 +9,5 @@ resources/
 node_modules/
 static/tools/*
 !static/tools/.gitkeep
+# Hand-written static tool pages (not Vite build output)
+!static/tools/cfa-level2/
